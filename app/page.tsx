@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import DateCard from "@/components/DateCard";
 import { DateCardSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import type { DailyNewsSummary } from "@/types";
 
 export default function Home() {
   const [data, setData] = useState<DailyNewsSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetch("/api/news")
@@ -17,6 +19,20 @@ export default function Home() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handleDeleteDay = async (date: string) => {
+    try {
+      const res = await fetch(`/api/news/${date}`, { method: "DELETE" });
+      if (res.ok) {
+        setData((prev) => prev.filter((d) => d.date !== date));
+        showToast("Day deleted successfully", "success");
+      } else {
+        showToast("Failed to delete day", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  };
 
   return (
     <div>
@@ -71,7 +87,7 @@ export default function Home() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((item) => (
-            <DateCard key={item.date} data={item} />
+            <DateCard key={item.date} data={item} onDelete={handleDeleteDay} />
           ))}
         </div>
       )}

@@ -48,6 +48,12 @@ function validateNewsJson(data: unknown): data is DailyNewsInput {
       if (!w.meaning_hindi || !w.example_sentence || !w.context_in_article)
         return false;
     }
+    if (article.key_dates && !Array.isArray(article.key_dates)) return false;
+    if (article.key_dates) {
+      for (const kd of article.key_dates) {
+        if (!kd.date || !kd.event) return false;
+      }
+    }
   }
   return true;
 }

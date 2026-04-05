@@ -18,6 +18,10 @@ export interface IDailyNews {
       example_sentence: string;
       context_in_article: string;
     }[];
+    key_dates?: {
+      date: string;
+      event: string;
+    }[];
   }[];
   createdAt: Date;
 }
@@ -34,6 +38,14 @@ const DifficultWordSchema = new Schema(
   { _id: false }
 );
 
+const KeyDateSchema = new Schema(
+  {
+    date: { type: String, required: true },
+    event: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const ArticleSchema = new Schema(
   {
     id: { type: String, required: true },
@@ -43,6 +55,7 @@ const ArticleSchema = new Schema(
     explanation: { type: String, required: true },
     one_line_summary: { type: String, required: true },
     difficult_words: [DifficultWordSchema],
+    key_dates: [KeyDateSchema],
   },
   { _id: false }
 );

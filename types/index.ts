@@ -7,6 +7,11 @@ export interface DifficultWord {
   context_in_article: string;
 }
 
+export interface KeyDate {
+  date: string;
+  event: string;
+}
+
 export interface Article {
   id: string;
   title: string;
@@ -15,6 +20,7 @@ export interface Article {
   explanation: string;
   one_line_summary: string;
   difficult_words: DifficultWord[];
+  key_dates?: KeyDate[];
 }
 
 export interface DailyNewsInput {

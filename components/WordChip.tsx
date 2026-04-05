@@ -3,7 +3,13 @@
 import { useState } from "react";
 import type { DifficultWord } from "@/types";
 
-export default function WordChip({ word }: { word: DifficultWord }) {
+export default function WordChip({
+  word,
+  onDelete,
+}: {
+  word: DifficultWord;
+  onDelete?: () => void;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -40,6 +46,20 @@ export default function WordChip({ word }: { word: DifficultWord }) {
               <span className="font-medium">In article:</span>{" "}
               {word.context_in_article}
             </p>
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Delete "${word.word}" from this article?`)) {
+                    onDelete();
+                    setOpen(false);
+                  }
+                }}
+                className="mt-3 w-full text-xs py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Delete Word
+              </button>
+            )}
           </div>
         </>
       )}

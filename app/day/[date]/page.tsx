@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import TabNav from "@/components/TabNav";
 import ArticleCard from "@/components/ArticleCard";
 import WordCard from "@/components/WordCard";
+import Timeline from "@/components/Timeline";
 import { CardSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import type { DailyNewsInput, Article, DifficultWord } from "@/types";
 
 const tabs = [
@@ -29,14 +31,17 @@ function formatDate(dateStr: string) {
 export default function DayViewPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const date = params.date as string;
   const highlightArticle = searchParams.get("article") || undefined;
 
   const [data, setData] = useState<DailyNewsInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const { showToast } = useToast();
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
+    setLoading(true);
     fetch(`/api/news/${date}`)
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
@@ -48,6 +53,10 @@ export default function DayViewPage() {
   }, [date]);
 
   useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
     if (highlightArticle && data) {
       setTimeout(() => {
         document
@@ -56,6 +65,60 @@ export default function DayViewPage() {
       }, 200);
     }
   }, [highlightArticle, data]);
+
+  const handleDeleteWord = async (articleId: string, word: string) => {
+    try {
+      const res = await fetch("/api/words/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, articleId, word }),
+      });
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            articles: prev.articles.map((a) =>
+              a.id === articleId
+                ? { ...a, difficult_words: a.difficult_words.filter((w) => w.word !== word) }
+                : a
+            ),
+          };
+        });
+        showToast(`"${word}" deleted`, "success");
+      } else {
+        showToast("Failed to delete word", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  };
+
+  const handleDeleteArticle = async (articleId: string) => {
+    try {
+      const res = await fetch("/api/articles/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, articleId }),
+      });
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          const remaining = prev.articles.filter((a) => a.id !== articleId);
+          if (remaining.length === 0) {
+            router.push("/");
+            return prev;
+          }
+          return { ...prev, articles: remaining };
+        });
+        showToast("Article deleted", "success");
+      } else {
+        showToast("Failed to delete article", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  };
 
   if (loading) {
     return (
@@ -110,6 +173,8 @@ export default function DayViewPage() {
               key={article.id}
               article={article}
               highlightId={highlightArticle}
+              onDeleteWord={handleDeleteWord}
+              onDeleteArticle={handleDeleteArticle}
             />
           ))}
 
@@ -121,7 +186,10 @@ export default function DayViewPage() {
             >
               <div className="flex flex-wrap items-start gap-2 mb-3">
                 <h2 className="text-xl font-bold flex-1">{article.title}</h2>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--accent)] bg-opacity-15 text-[var(--accent)] font-medium">
+                <span
+                  className="text-xs px-2.5 py-1 rounded-full text-white font-medium"
+                  style={{ backgroundColor: "var(--accent)" }}
+                >
                   {article.category}
                 </span>
               </div>
@@ -141,9 +209,12 @@ export default function DayViewPage() {
               <p className="text-sm italic text-[var(--text-secondary)] mb-4">
                 {article.one_line_summary}
               </p>
-              <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed whitespace-pre-wrap">
+              <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed whitespace-pre-wrap mb-4">
                 {article.explanation}
               </div>
+              {article.key_dates && article.key_dates.length > 0 && (
+                <Timeline dates={article.key_dates} />
+              )}
             </div>
           ))}
 
@@ -155,6 +226,7 @@ export default function DayViewPage() {
                 word={word}
                 articleTitle={article.title}
                 articleId={article.id}
+                onDelete={() => handleDeleteWord(article.id, word.word)}
                 onArticleClick={() => {
                   setActiveTab("all");
                   setTimeout(() => {
