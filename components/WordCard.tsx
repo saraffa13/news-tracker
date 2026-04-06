@@ -7,6 +7,7 @@ interface WordCardProps {
   date?: string;
   onArticleClick?: () => void;
   onDelete?: () => void;
+  onToggleLearnt?: (learnt: boolean) => void;
 }
 
 export default function WordCard({
@@ -15,12 +16,31 @@ export default function WordCard({
   date,
   onArticleClick,
   onDelete,
+  onToggleLearnt,
 }: WordCardProps) {
   return (
     <div className="rounded-xl bg-[var(--card)] border border-[var(--border-color)] p-4">
       <div className="flex items-start justify-between mb-2">
         <h3 className="text-lg font-bold text-[var(--accent)]">{word.word}</h3>
         <div className="flex items-center gap-2">
+          {onToggleLearnt && (
+            <button
+              onClick={() => onToggleLearnt(!word.learnt)}
+              className="transition-colors"
+              title={word.learnt ? "Mark as unlearnt" : "Mark as learnt"}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill={word.learnt ? "#f59e0b" : "none"}
+                stroke={word.learnt ? "#f59e0b" : "var(--text-secondary)"}
+                strokeWidth="2"
+              >
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
+          )}
           <span className="text-xs text-[var(--text-secondary)] font-mono">
             {word.pronunciation}
           </span>

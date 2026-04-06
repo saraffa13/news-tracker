@@ -17,11 +17,15 @@ export interface IDailyNews {
       meaning_hindi: string;
       example_sentence: string;
       context_in_article: string;
+      learnt?: boolean;
     }[];
     key_dates?: {
       date: string;
       event: string;
     }[];
+    starred?: boolean;
+    notes?: string;
+    canvasData?: string;
   }[];
   createdAt: Date;
 }
@@ -34,6 +38,7 @@ const DifficultWordSchema = new Schema(
     meaning_hindi: { type: String, required: true },
     example_sentence: { type: String, required: true },
     context_in_article: { type: String, required: true },
+    learnt: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -56,6 +61,9 @@ const ArticleSchema = new Schema(
     one_line_summary: { type: String, required: true },
     difficult_words: [DifficultWordSchema],
     key_dates: [KeyDateSchema],
+    starred: { type: Boolean, default: false },
+    notes: { type: String, default: "" },
+    canvasData: { type: String, default: "" },
   },
   { _id: false }
 );

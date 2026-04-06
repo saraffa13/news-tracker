@@ -12,12 +12,12 @@
 }
 
 :root {
-  --bg: #f9fafb;
-  --card: #ffffff;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --accent: #2563eb;
-  --border-color: #e5e7eb;
+  --bg: #f5f0eb;
+  --card: #faf7f4;
+  --text-primary: #2d2a26;
+  --text-secondary: #6b6560;
+  --accent: #4a72b0;
+  --border-color: #e0d8d0;
 }
 
 [data-theme="dark"] {

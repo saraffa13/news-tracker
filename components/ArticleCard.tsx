@@ -1,20 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { Article } from "@/types";
 import WordChip from "./WordChip";
 import Timeline from "./Timeline";
 
 export default function ArticleCard({
   article,
+  date,
   highlightId,
   onDeleteWord,
   onDeleteArticle,
+  onToggleLearnt,
+  onToggleStar,
 }: {
   article: Article;
+  date?: string;
   highlightId?: string;
   onDeleteWord?: (articleId: string, word: string) => void;
   onDeleteArticle?: (articleId: string) => void;
+  onToggleLearnt?: (articleId: string, word: string, learnt: boolean) => void;
+  onToggleStar?: (articleId: string, starred: boolean) => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -32,6 +39,39 @@ export default function ArticleCard({
       <div className="flex flex-wrap items-start gap-2 mb-2">
         <h2 className="text-xl font-bold flex-1">{article.title}</h2>
         <div className="flex items-center gap-2">
+          {date && (
+            <Link
+              href={`/day/${date}/article/${article.id}`}
+              className="p-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--border-color)] transition-colors"
+              title="Open article"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </Link>
+          )}
+          {onToggleStar && (
+            <button
+              onClick={() => onToggleStar(article.id, !article.starred)}
+              className="p-1.5 rounded-md transition-colors"
+              title={article.starred ? "Unstar article" : "Star article"}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill={article.starred ? "var(--accent)" : "none"}
+                stroke={article.starred ? "var(--accent)" : "var(--text-secondary)"}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
+          )}
           <span
             className="text-xs px-2.5 py-1 rounded-full text-white font-medium whitespace-nowrap"
             style={{ backgroundColor: "var(--accent)" }}
@@ -79,7 +119,7 @@ export default function ArticleCard({
           Original Article
         </button>
         {showOriginal && (
-          <div className="pl-4 border-l-2 border-[var(--border-color)] text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]">
+          <div className="pl-4 border-l-2 border-[var(--accent)] text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)] bg-[var(--bg)] rounded-r-lg p-4">
             {article.original_text}
           </div>
         )}
@@ -103,7 +143,7 @@ export default function ArticleCard({
           Explanation
         </button>
         {showExplanation && (
-          <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)]">
             {article.explanation}
           </div>
         )}
@@ -124,6 +164,11 @@ export default function ArticleCard({
               onDelete={
                 onDeleteWord
                   ? () => onDeleteWord(article.id, w.word)
+                  : undefined
+              }
+              onToggleLearnt={
+                onToggleLearnt
+                  ? (learnt) => onToggleLearnt(article.id, w.word, learnt)
                   : undefined
               }
             />

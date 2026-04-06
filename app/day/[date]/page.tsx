@@ -5,6 +5,8 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import TabNav from "@/components/TabNav";
 import ArticleCard from "@/components/ArticleCard";
+import NotesSection from "@/components/NotesSection";
+import CanvasSection from "@/components/CanvasSection";
 import WordCard from "@/components/WordCard";
 import Timeline from "@/components/Timeline";
 import { CardSkeleton } from "@/components/Skeleton";
@@ -120,6 +122,120 @@ export default function DayViewPage() {
     }
   };
 
+  const handleToggleLearnt = async (articleId: string, word: string, learnt: boolean) => {
+    try {
+      const res = await fetch("/api/words/learnt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, articleId, word, learnt }),
+      });
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            articles: prev.articles.map((a) =>
+              a.id === articleId
+                ? {
+                    ...a,
+                    difficult_words: a.difficult_words.map((w) =>
+                      w.word === word ? { ...w, learnt } : w
+                    ),
+                  }
+                : a
+            ),
+          };
+        });
+        showToast(learnt ? `"${word}" marked as learnt` : `"${word}" unmarked`, "success");
+      } else {
+        showToast("Failed to update", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  };
+
+  const handleToggleStar = async (articleId: string, starred: boolean) => {
+    try {
+      const res = await fetch("/api/articles/star", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, articleId, starred }),
+      });
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            articles: prev.articles.map((a) =>
+              a.id === articleId ? { ...a, starred } : a
+            ),
+          };
+        });
+        showToast(starred ? "Article starred" : "Article unstarred", "success");
+      } else {
+        showToast("Failed to update", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  };
+
+  const handleSaveNotes = async (articleId: string, notes: string) => {
+    try {
+      const res = await fetch("/api/articles/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, articleId, notes }),
+      });
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            articles: prev.articles.map((a) =>
+              a.id === articleId ? { ...a, notes } : a
+            ),
+          };
+        });
+        showToast("Notes saved", "success");
+      } else {
+        showToast("Failed to save notes", "error");
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  };
+
+  const handleSaveCanvas = async (articleId: string, canvasData: string) => {
+    try {
+      const res = await fetch("/api/articles/canvas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, articleId, canvasData }),
+      });
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            articles: prev.articles.map((a) =>
+              a.id === articleId ? { ...a, canvasData } : a
+            ),
+          };
+        });
+        showToast("Canvas saved", "success");
+      } else {
+        const err = await res.text();
+        console.error("Canvas save failed:", res.status, err);
+        showToast("Failed to save canvas", "error");
+      }
+    } catch (e) {
+      console.error("Canvas save error:", e);
+      showToast("Network error", "error");
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -153,6 +269,7 @@ export default function DayViewPage() {
       allWords.push({ word: w, article });
     }
   }
+  allWords.sort((a, b) => a.word.word.localeCompare(b.word.word));
 
   return (
     <div>
@@ -169,13 +286,36 @@ export default function DayViewPage() {
       <div className="mt-6 space-y-6">
         {activeTab === "all" &&
           data.articles.map((article) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              highlightId={highlightArticle}
-              onDeleteWord={handleDeleteWord}
-              onDeleteArticle={handleDeleteArticle}
-            />
+            <div key={article.id} className="flex flex-col xl:flex-row gap-4 xl:items-stretch">
+              <div className="flex-1 min-w-0">
+                <ArticleCard
+                  article={article}
+                  date={date}
+                  highlightId={highlightArticle}
+                  onDeleteWord={handleDeleteWord}
+                  onDeleteArticle={handleDeleteArticle}
+                  onToggleLearnt={handleToggleLearnt}
+                  onToggleStar={handleToggleStar}
+                />
+              </div>
+              {/* Notes + Canvas: always side by side */}
+              <div className="w-full xl:w-auto flex-shrink-0">
+                <div className="flex gap-4 xl:w-[40rem] h-full">
+                  <div className="flex-1">
+                    <NotesSection
+                      notes={article.notes || ""}
+                      onSave={(notes) => handleSaveNotes(article.id, notes)}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <CanvasSection
+                      canvasData={article.canvasData || ""}
+                      onSave={(data) => handleSaveCanvas(article.id, data)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
 
         {activeTab === "original" &&
@@ -227,6 +367,9 @@ export default function DayViewPage() {
                 articleTitle={article.title}
                 articleId={article.id}
                 onDelete={() => handleDeleteWord(article.id, word.word)}
+                onToggleLearnt={
+                  (learnt) => handleToggleLearnt(article.id, word.word, learnt)
+                }
                 onArticleClick={() => {
                   setActiveTab("all");
                   setTimeout(() => {

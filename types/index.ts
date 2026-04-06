@@ -5,6 +5,7 @@ export interface DifficultWord {
   meaning_hindi: string;
   example_sentence: string;
   context_in_article: string;
+  learnt?: boolean;
 }
 
 export interface KeyDate {
@@ -21,6 +22,9 @@ export interface Article {
   one_line_summary: string;
   difficult_words: DifficultWord[];
   key_dates?: KeyDate[];
+  starred?: boolean;
+  notes?: string;
+  canvasData?: string;
 }
 
 export interface DailyNewsInput {

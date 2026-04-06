@@ -46,7 +46,7 @@ export default function RootLayout({
         <ThemeProvider>
           <ToastProvider>
             <Navbar />
-            <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <main className="flex-1 w-full max-w-[2000px] mx-auto px-4 py-6 sm:px-6 lg:px-8">
               {children}
             </main>
           </ToastProvider>

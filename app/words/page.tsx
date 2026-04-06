@@ -11,47 +11,40 @@ export default function WordsPage() {
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [results, setResults] = useState<WordSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [allWords, setAllWords] = useState<WordSearchResult[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const search = useCallback(async () => {
-    setLoading(true);
-    setHasSearched(true);
-    const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (fromDate) params.set("from", fromDate);
-    if (toDate) params.set("to", toDate);
-
-    try {
-      const res = await fetch(`/api/words?${params.toString()}`);
-      const data = await res.json();
-      setResults(data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, [query, fromDate, toDate]);
-
+  // Fetch all words on mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (query || fromDate || toDate) {
-        search();
+    fetch("/api/words")
+      .then((r) => r.json())
+      .then(setAllWords)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Filter client-side
+  const filtered = allWords.filter((w) => {
+    if (query) {
+      const q = query.toLowerCase();
+      if (!w.word.toLowerCase().includes(q) && !w.meaning_english.toLowerCase().includes(q)) {
+        return false;
       }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [query, fromDate, toDate, search]);
+    }
+    if (fromDate && w.date < fromDate) return false;
+    if (toDate && w.date > toDate) return false;
+    return true;
+  });
 
   return (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Word Search</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">All Words</h1>
 
       <div className="space-y-4 mb-8">
         <SearchBar
           value={query}
           onChange={setQuery}
-          placeholder="Search for a word (e.g., curtailment, surge)..."
+          placeholder="Filter words..."
         />
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
@@ -81,17 +74,18 @@ export default function WordsPage() {
 
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <CardSkeleton key={i} />
           ))}
         </div>
-      ) : results.length > 0 ? (
+      ) : filtered.length > 0 ? (
         <>
           <p className="text-sm text-[var(--text-secondary)] mb-4">
-            {results.length} result{results.length !== 1 ? "s" : ""} found
+            {filtered.length} word{filtered.length !== 1 ? "s" : ""}
+            {query && ` matching "${query}"`}
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
-            {results.map((r, idx) => (
+            {filtered.map((r, idx) => (
               <Link key={`${r.word}-${r.date}-${idx}`} href={`/day/${r.date}?article=${r.articleId}`}>
                 <WordCard
                   word={r}
@@ -102,13 +96,9 @@ export default function WordsPage() {
             ))}
           </div>
         </>
-      ) : hasSearched ? (
-        <p className="text-center text-[var(--text-secondary)] py-12">
-          No words found matching your search.
-        </p>
       ) : (
         <p className="text-center text-[var(--text-secondary)] py-12">
-          Start typing to search across all your vocabulary.
+          {allWords.length === 0 ? "No words added yet." : "No words match your search."}
         </p>
       )}
     </div>

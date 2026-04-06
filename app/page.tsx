@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DateCard from "@/components/DateCard";
+import SearchBar from "@/components/SearchBar";
 import { DateCardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 import type { DailyNewsSummary } from "@/types";
@@ -10,6 +11,8 @@ import type { DailyNewsSummary } from "@/types";
 export default function Home() {
   const [data, setData] = useState<DailyNewsSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -34,9 +37,23 @@ export default function Home() {
     }
   };
 
+  const filtered = data.filter((item) => {
+    if (dateFilter && !item.date.includes(dateFilter)) return false;
+    if (query) {
+      const q = query.toLowerCase();
+      if (
+        !item.newspaper.toLowerCase().includes(q) &&
+        !item.date.includes(q)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
           <p className="text-[var(--text-secondary)] text-sm mt-1">
@@ -49,6 +66,25 @@ export default function Home() {
         >
           + Add Today&apos;s News
         </Link>
+      </div>
+
+      {/* Search & filter */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex-1">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Search by newspaper or date..."
+          />
+        </div>
+        <div className="sm:w-48">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg bg-[var(--card)] border border-[var(--border-color)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-sm"
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -84,9 +120,13 @@ export default function Home() {
             Add Your First News
           </Link>
         </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-center text-[var(--text-secondary)] py-12">
+          No results matching your search.
+        </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.map((item) => (
+          {filtered.map((item) => (
             <DateCard key={item.date} data={item} onDelete={handleDeleteDay} />
           ))}
         </div>

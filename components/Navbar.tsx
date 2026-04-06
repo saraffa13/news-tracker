@@ -9,7 +9,8 @@ const links = [
   { href: "/add", label: "Add News" },
   { href: "/revise", label: "Revise" },
   { href: "/words", label: "Words" },
-  { href: "/search", label: "Search" },
+  { href: "/learnt", label: "Learnt" },
+  { href: "/favorites", label: "Favorites" },
 ];
 
 export default function Navbar() {
@@ -17,7 +18,7 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-40 bg-[var(--card)] border-b border-[var(--border-color)] backdrop-blur-sm bg-opacity-90">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[2000px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-6">
             <Link href="/" className="text-lg font-bold text-[var(--accent)]">
