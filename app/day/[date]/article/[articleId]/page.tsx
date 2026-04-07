@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Timeline from "@/components/Timeline";
-import WordChip from "@/components/WordChip";
+import InlineWordsText from "@/components/InlineWordsText";
 import NotesSection from "@/components/NotesSection";
 import CanvasSection from "@/components/CanvasSection";
 import { CardSkeleton } from "@/components/Skeleton";
@@ -253,16 +253,26 @@ export default function ArticleDetailPage() {
           {/* Original Article */}
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">Original Article</h3>
-            <div className="pl-4 border-l-2 border-[var(--accent)] text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)] bg-[var(--bg)] rounded-r-lg p-4">
-              {article.original_text}
+            <div className="pl-4 border-l-2 border-[var(--accent)] text-sm leading-relaxed text-[var(--text-primary)] bg-[var(--bg)] rounded-r-lg p-4">
+              <InlineWordsText
+                text={article.original_text}
+                words={article.difficult_words}
+                onToggleLearnt={handleToggleLearnt}
+                onDelete={handleDeleteWord}
+              />
             </div>
           </div>
 
           {/* Explanation */}
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">Explanation</h3>
-            <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)]">
-              {article.explanation}
+            <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed text-[var(--text-primary)]">
+              <InlineWordsText
+                text={article.explanation}
+                words={article.difficult_words}
+                onToggleLearnt={handleToggleLearnt}
+                onDelete={handleDeleteWord}
+              />
             </div>
           </div>
 
@@ -274,24 +284,6 @@ export default function ArticleDetailPage() {
             </div>
           )}
 
-          {/* Words */}
-          {article.difficult_words.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">
-                Vocabulary ({article.difficult_words.length})
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {article.difficult_words.map((w) => (
-                  <WordChip
-                    key={w.word}
-                    word={w}
-                    onDelete={() => handleDeleteWord(w.word)}
-                    onToggleLearnt={(learnt) => handleToggleLearnt(w.word, learnt)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Sidebar: stacked on PC, side by side on tablet/mobile */}

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Article } from "@/types";
-import WordChip from "./WordChip";
 import Timeline from "./Timeline";
+import InlineWordsText from "./InlineWordsText";
 
 export default function ArticleCard({
   article,
@@ -141,8 +141,17 @@ export default function ArticleCard({
           Original Article
         </button>
         {showOriginal && (
-          <div className="pl-4 border-l-2 border-[var(--accent)] text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)] bg-[var(--bg)] rounded-r-lg p-4">
-            {article.original_text}
+          <div className="pl-4 border-l-2 border-[var(--accent)] text-sm leading-relaxed text-[var(--text-primary)] bg-[var(--bg)] rounded-r-lg p-4">
+            <InlineWordsText
+              text={article.original_text}
+              words={article.difficult_words}
+              onToggleLearnt={
+                onToggleLearnt ? (w, l) => onToggleLearnt(article.id, w, l) : undefined
+              }
+              onDelete={
+                onDeleteWord ? (w) => onDeleteWord(article.id, w) : undefined
+              }
+            />
           </div>
         )}
       </div>
@@ -165,8 +174,17 @@ export default function ArticleCard({
           Explanation
         </button>
         {showExplanation && (
-          <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)]">
-            {article.explanation}
+          <div className="rounded-lg bg-[var(--bg)] p-4 text-sm leading-relaxed text-[var(--text-primary)]">
+            <InlineWordsText
+              text={article.explanation}
+              words={article.difficult_words}
+              onToggleLearnt={
+                onToggleLearnt ? (w, l) => onToggleLearnt(article.id, w, l) : undefined
+              }
+              onDelete={
+                onDeleteWord ? (w) => onDeleteWord(article.id, w) : undefined
+              }
+            />
           </div>
         )}
       </div>
@@ -176,27 +194,6 @@ export default function ArticleCard({
         <Timeline dates={article.key_dates} />
       )}
 
-      {/* Word chips */}
-      {article.difficult_words.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {article.difficult_words.map((w) => (
-            <WordChip
-              key={w.word}
-              word={w}
-              onDelete={
-                onDeleteWord
-                  ? () => onDeleteWord(article.id, w.word)
-                  : undefined
-              }
-              onToggleLearnt={
-                onToggleLearnt
-                  ? (learnt) => onToggleLearnt(article.id, w.word, learnt)
-                  : undefined
-              }
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
