@@ -352,7 +352,7 @@ export default function DayViewPage() {
               </div>
               {/* Notes + Canvas: always side by side */}
               <div className="w-full xl:w-auto flex-shrink-0">
-                <div className="flex gap-4 xl:w-[40rem] h-full">
+                <div className="flex gap-4 xl:w-[28rem] h-full">
                   <div className="flex-1">
                     <NotesSection
                       notes={article.notes || ""}
