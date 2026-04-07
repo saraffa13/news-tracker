@@ -40,6 +40,7 @@ export default function DayViewPage() {
   const [data, setData] = useState<DailyNewsInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
   const { showToast } = useToast();
 
   const fetchData = useCallback(() => {
@@ -207,6 +208,29 @@ export default function DayViewPage() {
     }
   };
 
+  const handleToggleRead = async (articleId: string, read: boolean) => {
+    try {
+      const res = await fetch("/api/articles/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, articleId, read }),
+      });
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            articles: prev.articles.map((a) =>
+              a.id === articleId ? { ...a, read } : a
+            ),
+          };
+        });
+      }
+    } catch {
+      showToast("Network error", "error");
+    }
+  };
+
   const handleSaveCanvas = async (articleId: string, canvasData: string) => {
     try {
       const res = await fetch("/api/articles/canvas", {
@@ -283,9 +307,36 @@ export default function DayViewPage() {
 
       <TabNav tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
+      {(activeTab === "all" || activeTab === "original" || activeTab === "explained") && (
+        <div className="mt-4 flex gap-2">
+          {(["all", "unread", "read"] as const).map((f) => {
+            const count = f === "all"
+              ? data.articles.length
+              : f === "unread"
+                ? data.articles.filter((a) => !a.read).length
+                : data.articles.filter((a) => a.read).length;
+            return (
+              <button
+                key={f}
+                onClick={() => setReadFilter(f)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  readFilter === f
+                    ? "bg-[var(--accent)] text-white"
+                    : "bg-[var(--card)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                {f === "all" ? "All" : f === "unread" ? "Unread" : "Read"} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="mt-6 space-y-6">
         {activeTab === "all" &&
-          data.articles.map((article) => (
+          data.articles
+            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read))
+            .map((article) => (
             <div key={article.id} className="flex flex-col xl:flex-row gap-4 xl:items-stretch">
               <div className="flex-1 min-w-0">
                 <ArticleCard
@@ -296,6 +347,7 @@ export default function DayViewPage() {
                   onDeleteArticle={handleDeleteArticle}
                   onToggleLearnt={handleToggleLearnt}
                   onToggleStar={handleToggleStar}
+                  onToggleRead={handleToggleRead}
                 />
               </div>
               {/* Notes + Canvas: always side by side */}
@@ -319,7 +371,9 @@ export default function DayViewPage() {
           ))}
 
         {activeTab === "original" &&
-          data.articles.map((article) => (
+          data.articles
+            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read))
+            .map((article) => (
             <div
               key={article.id}
               className="rounded-xl bg-[var(--card)] border border-[var(--border-color)] p-5 sm:p-6"
@@ -340,7 +394,9 @@ export default function DayViewPage() {
           ))}
 
         {activeTab === "explained" &&
-          data.articles.map((article) => (
+          data.articles
+            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read))
+            .map((article) => (
             <div
               key={article.id}
               className="rounded-xl bg-[var(--card)] border border-[var(--border-color)] p-5 sm:p-6"

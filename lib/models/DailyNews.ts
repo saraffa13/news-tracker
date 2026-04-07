@@ -26,6 +26,7 @@ export interface IDailyNews {
     starred?: boolean;
     notes?: string;
     canvasData?: string;
+    read?: boolean;
   }[];
   createdAt: Date;
 }
@@ -64,6 +65,7 @@ const ArticleSchema = new Schema(
     starred: { type: Boolean, default: false },
     notes: { type: String, default: "" },
     canvasData: { type: String, default: "" },
+    read: { type: Boolean, default: false },
   },
   { _id: false }
 );

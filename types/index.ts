@@ -25,6 +25,7 @@ export interface Article {
   starred?: boolean;
   notes?: string;
   canvasData?: string;
+  read?: boolean;
 }
 
 export interface DailyNewsInput {
@@ -43,6 +44,7 @@ export interface DailyNewsSummary {
   newspaper: string;
   articleCount: number;
   wordCount: number;
+  unreadCount: number;
 }
 
 export interface WordSearchResult {

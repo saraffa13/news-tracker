@@ -29,13 +29,18 @@ export default function DateCard({
         <p className="text-sm text-[var(--text-secondary)] mt-1">
           {data.newspaper}
         </p>
-        <div className="flex gap-4 mt-3 text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-sm">
           <span className="text-[var(--accent)] font-medium">
             {data.articleCount} article{data.articleCount !== 1 ? "s" : ""}
           </span>
           <span className="text-[var(--text-secondary)]">
             {data.wordCount} word{data.wordCount !== 1 ? "s" : ""} learned
           </span>
+          {data.unreadCount > 0 && (
+            <span className="text-orange-500 font-medium">
+              {data.unreadCount} unread
+            </span>
+          )}
         </div>
       </Link>
       {onDelete && (

@@ -18,6 +18,7 @@ export async function GET() {
         (sum, a) => sum + a.difficult_words.length,
         0
       ),
+      unreadCount: doc.articles.filter((a) => !a.read).length,
     }));
 
     return NextResponse.json(summaries);

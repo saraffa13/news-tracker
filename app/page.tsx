@@ -13,6 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function Home() {
   };
 
   const filtered = data.filter((item) => {
+    if (unreadOnly && item.unreadCount === 0) return false;
     if (dateFilter && !item.date.includes(dateFilter)) return false;
     if (query) {
       const q = query.toLowerCase();
@@ -69,7 +71,7 @@ export default function Home() {
       </div>
 
       {/* Search & filter */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="flex-1">
           <SearchBar
             value={query}
@@ -85,6 +87,29 @@ export default function Home() {
             className="w-full px-3 py-2.5 rounded-lg bg-[var(--card)] border border-[var(--border-color)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-sm"
           />
         </div>
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setUnreadOnly(false)}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            !unreadOnly
+              ? "bg-[var(--accent)] text-white"
+              : "bg-[var(--card)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          All days
+        </button>
+        <button
+          onClick={() => setUnreadOnly(true)}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            unreadOnly
+              ? "bg-[var(--accent)] text-white"
+              : "bg-[var(--card)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          Has unread ({data.filter((d) => d.unreadCount > 0).length})
+        </button>
       </div>
 
       {loading ? (

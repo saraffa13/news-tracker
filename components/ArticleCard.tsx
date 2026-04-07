@@ -14,6 +14,7 @@ export default function ArticleCard({
   onDeleteArticle,
   onToggleLearnt,
   onToggleStar,
+  onToggleRead,
 }: {
   article: Article;
   date?: string;
@@ -22,6 +23,7 @@ export default function ArticleCard({
   onDeleteArticle?: (articleId: string) => void;
   onToggleLearnt?: (articleId: string, word: string, learnt: boolean) => void;
   onToggleStar?: (articleId: string, starred: boolean) => void;
+  onToggleRead?: (articleId: string, read: boolean) => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -30,7 +32,9 @@ export default function ArticleCard({
   return (
     <div
       id={`article-${article.id}`}
-      className={`rounded-xl bg-[var(--card)] border p-5 sm:p-6 ${
+      className={`rounded-xl bg-[var(--card)] border p-5 sm:p-6 transition-opacity ${
+        article.read ? "opacity-60" : ""
+      } ${
         isHighlighted
           ? "border-[var(--accent)] ring-2 ring-[var(--accent)] ring-opacity-30"
           : "border-[var(--border-color)]"
@@ -39,6 +43,26 @@ export default function ArticleCard({
       <div className="flex flex-wrap items-start gap-2 mb-2">
         <h2 className="text-xl font-bold flex-1">{article.title}</h2>
         <div className="flex items-center gap-2">
+          {onToggleRead && (
+            <button
+              onClick={() => onToggleRead(article.id, !article.read)}
+              className={`p-1.5 rounded-md transition-colors ${
+                article.read ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--accent)]"
+              } hover:bg-[var(--border-color)]`}
+              title={article.read ? "Mark as unread" : "Mark as read"}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {article.read ? (
+                  <>
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </>
+                ) : (
+                  <circle cx="12" cy="12" r="9" />
+                )}
+              </svg>
+            </button>
+          )}
           {date && (
             <Link
               href={`/day/${date}/article/${article.id}`}
