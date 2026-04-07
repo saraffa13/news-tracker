@@ -32,9 +32,7 @@ export default function ArticleCard({
   return (
     <div
       id={`article-${article.id}`}
-      className={`rounded-xl bg-[var(--card)] border p-5 sm:p-6 transition-opacity ${
-        article.read ? "opacity-60" : ""
-      } ${
+      className={`rounded-xl bg-[var(--card)] border p-5 sm:p-6 ${
         isHighlighted
           ? "border-[var(--accent)] ring-2 ring-[var(--accent)] ring-opacity-30"
           : "border-[var(--border-color)]"
