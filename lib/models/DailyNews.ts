@@ -7,6 +7,7 @@ export interface IDailyNews {
     id: string;
     title: string;
     category: string;
+    word_count?: number;
     original_text: string;
     explanation: string;
     one_line_summary: string;
@@ -57,6 +58,7 @@ const ArticleSchema = new Schema(
     id: { type: String, required: true },
     title: { type: String, required: true },
     category: { type: String, required: true },
+    word_count: { type: Number, default: 0 },
     original_text: { type: String, required: true },
     explanation: { type: String, required: true },
     one_line_summary: { type: String, required: true },

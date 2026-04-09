@@ -17,6 +17,7 @@ export interface Article {
   id: string;
   title: string;
   category: string;
+  word_count?: number;
   original_text: string;
   explanation: string;
   one_line_summary: string;

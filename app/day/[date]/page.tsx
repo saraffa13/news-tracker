@@ -41,6 +41,7 @@ export default function DayViewPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
+  const [sortBy, setSortBy] = useState<"default" | "shortest" | "longest">("default");
   const { showToast } = useToast();
 
   const fetchData = useCallback(() => {
@@ -287,6 +288,16 @@ export default function DayViewPage() {
     );
   }
 
+  const getWordCount = (a: Article) => a.word_count || a.original_text.split(/\s+/).length;
+
+  const sortArticles = (articles: Article[]) => {
+    if (sortBy === "default") return articles;
+    return [...articles].sort((a, b) => {
+      const diff = getWordCount(a) - getWordCount(b);
+      return sortBy === "shortest" ? diff : -diff;
+    });
+  };
+
   const allWords: { word: DifficultWord; article: Article }[] = [];
   for (const article of data.articles) {
     for (const w of article.difficult_words) {
@@ -308,7 +319,7 @@ export default function DayViewPage() {
       <TabNav tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {(activeTab === "all" || activeTab === "original" || activeTab === "explained") && (
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {(["all", "unread", "read"] as const).map((f) => {
             const count = f === "all"
               ? data.articles.length
@@ -329,13 +340,27 @@ export default function DayViewPage() {
               </button>
             );
           })}
+          <span className="mx-1 text-[var(--border-color)]">|</span>
+          {(["default", "shortest", "longest"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSortBy(s)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                sortBy === s
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-[var(--card)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {s === "default" ? "Default order" : s === "shortest" ? "Shortest first" : "Longest first"}
+            </button>
+          ))}
         </div>
       )}
 
       <div className="mt-6 space-y-6">
         {activeTab === "all" &&
-          data.articles
-            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read))
+          sortArticles(data.articles
+            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read)))
             .map((article) => (
             <div key={article.id} className="flex flex-col xl:flex-row gap-4 xl:items-stretch">
               <div className="flex-1 min-w-0">
@@ -371,8 +396,8 @@ export default function DayViewPage() {
           ))}
 
         {activeTab === "original" &&
-          data.articles
-            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read))
+          sortArticles(data.articles
+            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read)))
             .map((article) => (
             <div
               key={article.id}
@@ -394,8 +419,8 @@ export default function DayViewPage() {
           ))}
 
         {activeTab === "explained" &&
-          data.articles
-            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read))
+          sortArticles(data.articles
+            .filter((a) => readFilter === "all" || (readFilter === "unread" ? !a.read : a.read)))
             .map((article) => (
             <div
               key={article.id}

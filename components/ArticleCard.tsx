@@ -121,6 +121,7 @@ export default function ArticleCard({
 
       <p className="text-sm italic text-[var(--text-secondary)] mb-4">
         {article.one_line_summary}
+        {article.word_count ? <span className="not-italic ml-2 text-xs opacity-60">({article.word_count} words)</span> : null}
       </p>
 
       {/* Original text - collapsible */}
