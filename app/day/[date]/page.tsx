@@ -261,6 +261,21 @@ export default function DayViewPage() {
     }
   };
 
+  const handleWordsAdded = (articleId: string, words: DifficultWord[]) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        articles: prev.articles.map((a) =>
+          a.id === articleId
+            ? { ...a, difficult_words: [...a.difficult_words, ...words] }
+            : a
+        ),
+      };
+    });
+    showToast(`${words.length} word${words.length > 1 ? "s" : ""} added`, "success");
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -373,6 +388,7 @@ export default function DayViewPage() {
                   onToggleLearnt={handleToggleLearnt}
                   onToggleStar={handleToggleStar}
                   onToggleRead={handleToggleRead}
+                  onWordsAdded={handleWordsAdded}
                 />
               </div>
               {/* Notes + Canvas: always side by side */}

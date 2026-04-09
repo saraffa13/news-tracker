@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { Article } from "@/types";
+import type { Article, DifficultWord } from "@/types";
 import Timeline from "./Timeline";
 import InlineWordsText from "./InlineWordsText";
+import AddWordsInput from "./AddWordsInput";
 
 export default function ArticleCard({
   article,
@@ -15,6 +16,7 @@ export default function ArticleCard({
   onToggleLearnt,
   onToggleStar,
   onToggleRead,
+  onWordsAdded,
 }: {
   article: Article;
   date?: string;
@@ -24,6 +26,7 @@ export default function ArticleCard({
   onToggleLearnt?: (articleId: string, word: string, learnt: boolean) => void;
   onToggleStar?: (articleId: string, starred: boolean) => void;
   onToggleRead?: (articleId: string, read: boolean) => void;
+  onWordsAdded?: (articleId: string, words: DifficultWord[]) => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -195,6 +198,15 @@ export default function ArticleCard({
         <Timeline dates={article.key_dates} />
       )}
 
+      {/* Add words input */}
+      {date && onWordsAdded && (
+        <AddWordsInput
+          articleId={article.id}
+          articleText={article.original_text}
+          date={date}
+          onWordsAdded={(words) => onWordsAdded(article.id, words)}
+        />
+      )}
     </div>
   );
 }

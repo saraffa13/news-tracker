@@ -5,11 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Timeline from "@/components/Timeline";
 import InlineWordsText from "@/components/InlineWordsText";
+import AddWordsInput from "@/components/AddWordsInput";
 import NotesSection from "@/components/NotesSection";
 import CanvasSection from "@/components/CanvasSection";
 import { CardSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
-import type { DailyNewsInput, Article } from "@/types";
+import type { DailyNewsInput, Article, DifficultWord } from "@/types";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -152,6 +153,14 @@ export default function ArticleDetailPage() {
     }
   };
 
+  const handleWordsAdded = (words: DifficultWord[]) => {
+    updateArticle((a) => ({
+      ...a,
+      difficult_words: [...a.difficult_words, ...words],
+    }));
+    showToast(`${words.length} word${words.length > 1 ? "s" : ""} added`, "success");
+  };
+
   const handleDeleteArticle = async () => {
     try {
       const res = await fetch("/api/articles/delete", {
@@ -283,6 +292,17 @@ export default function ArticleDetailPage() {
               <Timeline dates={article.key_dates} />
             </div>
           )}
+
+          {/* Add words */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">Add Vocabulary</h3>
+            <AddWordsInput
+              articleId={article.id}
+              articleText={article.original_text}
+              date={date}
+              onWordsAdded={handleWordsAdded}
+            />
+          </div>
 
         </div>
 
