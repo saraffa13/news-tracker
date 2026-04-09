@@ -42,6 +42,9 @@ export default function DayViewPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
   const [sortBy, setSortBy] = useState<"default" | "shortest" | "longest">("default");
+  const [showAddArticle, setShowAddArticle] = useState(false);
+  const [articleJson, setArticleJson] = useState("");
+  const [addingArticle, setAddingArticle] = useState(false);
   const { showToast } = useToast();
 
   const fetchData = useCallback(() => {
@@ -276,6 +279,49 @@ export default function DayViewPage() {
     showToast(`${words.length} word${words.length > 1 ? "s" : ""} added`, "success");
   };
 
+  const handleAddArticle = async () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(articleJson);
+    } catch {
+      showToast("Invalid JSON", "error");
+      return;
+    }
+
+    // Accept either a single article object or an array
+    const articles = Array.isArray(parsed) ? parsed : [parsed];
+
+    setAddingArticle(true);
+    let added = 0;
+    for (const article of articles) {
+      try {
+        const res = await fetch("/api/articles/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date, article }),
+        });
+        if (res.ok) {
+          setData((prev) => {
+            if (!prev) return prev;
+            return { ...prev, articles: [...prev.articles, article] };
+          });
+          added++;
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast(err.error || "Failed to add article", "error");
+        }
+      } catch {
+        showToast("Network error", "error");
+      }
+    }
+    if (added > 0) {
+      showToast(`${added} article${added > 1 ? "s" : ""} added`, "success");
+      setArticleJson("");
+      setShowAddArticle(false);
+    }
+    setAddingArticle(false);
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -324,11 +370,42 @@ export default function DayViewPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">{formatDate(date)}</h1>
-        <p className="text-[var(--text-secondary)] text-sm mt-1">
-          {data.newspaper} &middot; {data.articles.length} articles &middot;{" "}
-          {allWords.length} words
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">{formatDate(date)}</h1>
+            <p className="text-[var(--text-secondary)] text-sm mt-1">
+              {data.newspaper} &middot; {data.articles.length} articles &middot;{" "}
+              {allWords.length} words
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAddArticle(!showAddArticle)}
+            className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white font-medium text-sm hover:opacity-90 transition-opacity whitespace-nowrap flex-shrink-0"
+          >
+            {showAddArticle ? "Cancel" : "+ Add Article"}
+          </button>
+        </div>
+
+        {showAddArticle && (
+          <div className="mt-4 rounded-xl bg-[var(--card)] border border-[var(--border-color)] p-4">
+            <p className="text-xs text-[var(--text-secondary)] mb-2">
+              Paste a single article JSON object or an array of articles.
+            </p>
+            <textarea
+              value={articleJson}
+              onChange={(e) => setArticleJson(e.target.value)}
+              placeholder={'{\n  "id": "art_006",\n  "title": "...",\n  "category": "...",\n  "original_text": "...",\n  "explanation": "...",\n  "one_line_summary": "...",\n  "difficult_words": [...],\n  "key_dates": [...]\n}'}
+              className="w-full h-48 px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border-color)] text-[var(--text-primary)] text-sm font-mono placeholder:text-[var(--text-secondary)] placeholder:opacity-40 focus:outline-none focus:border-[var(--accent)] resize-y"
+            />
+            <button
+              onClick={handleAddArticle}
+              disabled={addingArticle || !articleJson.trim()}
+              className="mt-2 px-5 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {addingArticle ? "Adding..." : "Add Article"}
+            </button>
+          </div>
+        )}
       </div>
 
       <TabNav tabs={tabs} active={activeTab} onChange={setActiveTab} />
