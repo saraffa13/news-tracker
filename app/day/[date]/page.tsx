@@ -288,8 +288,15 @@ export default function DayViewPage() {
       return;
     }
 
-    // Accept either a single article object or an array
-    const articles = Array.isArray(parsed) ? parsed : [parsed];
+    // Accept: full daily news object { date, newspaper, articles }, array of articles, or single article
+    let articles: Record<string, unknown>[];
+    if (parsed.articles && Array.isArray(parsed.articles)) {
+      articles = parsed.articles;
+    } else if (Array.isArray(parsed)) {
+      articles = parsed;
+    } else {
+      articles = [parsed];
+    }
 
     setAddingArticle(true);
     let added = 0;
