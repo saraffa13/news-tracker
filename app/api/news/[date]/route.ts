@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import DailyNews from "@/lib/models/DailyNews";
+import UserProgress from "@/lib/models/UserProgress";
+import { getAuthUser } from "@/lib/auth";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ date: string }> }
 ) {
   try {
@@ -16,6 +18,41 @@ export async function GET(
         { error: "No data found for this date" },
         { status: 404 }
       );
+    }
+
+    // Merge user progress if authenticated
+    const auth = getAuthUser(request);
+    if (auth) {
+      const progressDocs = await UserProgress.find(
+        { userId: auth.userId, date }
+      ).lean();
+
+      const progressMap = new Map(
+        progressDocs.map((p) => [p.articleId, p])
+      );
+
+      for (const article of doc.articles) {
+        const prog = progressMap.get(article.id);
+        if (prog) {
+          article.notes = prog.notes || "";
+          article.canvasData = prog.canvasData || "";
+          article.starred = prog.starred || false;
+          article.read = prog.read || false;
+          // Mark learnt words
+          const learntSet = new Set(prog.learntWords || []);
+          for (const w of article.difficult_words) {
+            w.learnt = learntSet.has(w.word);
+          }
+        } else {
+          article.notes = "";
+          article.canvasData = "";
+          article.starred = false;
+          article.read = false;
+          for (const w of article.difficult_words) {
+            w.learnt = false;
+          }
+        }
+      }
     }
 
     return NextResponse.json(doc);

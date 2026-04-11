@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import DailyNews from "@/lib/models/DailyNews";
+import UserProgress from "@/lib/models/UserProgress";
+import { requireAuth } from "@/lib/auth";
 
-// Allow large body for canvas base64 data
 export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
+    const user = requireAuth(request);
     const body = await request.text();
     const { date, articleId, canvasData } = JSON.parse(body);
     if (!date || !articleId || typeof canvasData !== "string") {
@@ -15,21 +16,18 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const result = await DailyNews.updateOne(
-      { date, "articles.id": articleId },
-      { $set: { "articles.$.canvasData": canvasData } }
+    await UserProgress.updateOne(
+      { userId: user.userId, date, articleId },
+      { $set: { canvasData } },
+      { upsert: true }
     );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
 
     return NextResponse.json({ message: "Canvas saved" });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.error("POST /api/articles/canvas error:", error);
-    return NextResponse.json(
-      { error: "Failed to save canvas" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to save canvas" }, { status: 500 });
   }
 }

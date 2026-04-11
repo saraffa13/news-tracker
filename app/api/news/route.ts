@@ -1,25 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import DailyNews from "@/lib/models/DailyNews";
+import UserProgress from "@/lib/models/UserProgress";
+import { getAuthUser } from "@/lib/auth";
 import type { DailyNewsInput } from "@/types";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     const docs = await DailyNews.find({}, { date: 1, newspaper: 1, articles: 1 })
       .sort({ date: -1 })
       .lean();
 
-    const summaries = docs.map((doc) => ({
-      date: doc.date,
-      newspaper: doc.newspaper,
-      articleCount: doc.articles.length,
-      wordCount: doc.articles.reduce(
-        (sum, a) => sum + a.difficult_words.length,
-        0
-      ),
-      unreadCount: doc.articles.filter((a) => !a.read).length,
-    }));
+    const auth = getAuthUser(request);
+    let readMap = new Map<string, Set<string>>(); // date -> set of read articleIds
+
+    if (auth) {
+      const progressDocs = await UserProgress.find(
+        { userId: auth.userId, read: true },
+        { date: 1, articleId: 1 }
+      ).lean();
+      for (const p of progressDocs) {
+        if (!readMap.has(p.date)) readMap.set(p.date, new Set());
+        readMap.get(p.date)!.add(p.articleId);
+      }
+    }
+
+    const summaries = docs.map((doc) => {
+      const readSet = readMap.get(doc.date) || new Set();
+      return {
+        date: doc.date,
+        newspaper: doc.newspaper,
+        articleCount: doc.articles.length,
+        wordCount: doc.articles.reduce(
+          (sum, a) => sum + a.difficult_words.length,
+          0
+        ),
+        unreadCount: doc.articles.filter((a) => !readSet.has(a.id)).length,
+      };
+    });
 
     return NextResponse.json(summaries);
   } catch (error) {
