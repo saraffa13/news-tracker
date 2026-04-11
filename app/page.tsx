@@ -57,7 +57,7 @@ export default function Home() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard.</h1>
           <p className="text-[var(--text-secondary)] text-sm mt-1">
             Your newspaper learning journal
           </p>
