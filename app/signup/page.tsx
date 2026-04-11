@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/components/AuthProvider";
 
 export default function SignupPage() {
-  const { signup } = useAuth();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,9 +16,26 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const err = await signup(email, password, name);
-    if (err) setError(err);
-    setLoading(false);
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        // Redirect to verify page with email
+        router.push(`/verify?email=${encodeURIComponent(email)}`);
+      } else {
+        setError(data.error || "Signup failed");
+      }
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,7 +86,7 @@ export default function SignupPage() {
             disabled={loading}
             className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Sign Up"}
+            {loading ? "Sending verification..." : "Sign Up"}
           </button>
         </form>
 

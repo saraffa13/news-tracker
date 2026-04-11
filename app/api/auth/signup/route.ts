@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import dbConnect from "@/lib/mongodb";
 import User from "@/lib/models/User";
-import { signToken } from "@/lib/auth";
+import { sendMail, otpEmailHtml } from "@/lib/mail";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,27 +19,37 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing) {
+    if (existing && existing.verified) {
       return NextResponse.json({ error: "Email already registered" }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email: email.toLowerCase(), passwordHash, name });
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    const token = signToken({ userId: user._id.toString(), email: user.email });
+    if (existing && !existing.verified) {
+      // Update existing unverified user
+      await User.updateOne(
+        { _id: existing._id },
+        { $set: { passwordHash, name, verifyOtp: otp, verifyOtpExpiry: otpExpiry } }
+      );
+    } else {
+      await User.create({
+        email: email.toLowerCase(),
+        passwordHash,
+        name,
+        verified: false,
+        verifyOtp: otp,
+        verifyOtpExpiry: otpExpiry,
+      });
+    }
 
-    const res = NextResponse.json({
-      user: { id: user._id.toString(), email: user.email, name: user.name },
+    await sendMail(email, "NewsDecoder — Verify your email", otpEmailHtml(name, otp));
+
+    return NextResponse.json({
+      message: "Verification code sent to your email",
+      email: email.toLowerCase(),
     });
-    res.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60,
-      path: "/",
-    });
-
-    return res;
   } catch (error) {
     console.error("POST /api/auth/signup error:", error);
     return NextResponse.json({ error: "Signup failed" }, { status: 500 });

@@ -12,6 +12,7 @@ const links = [
   { href: "/words", label: "Words" },
   { href: "/learnt", label: "Learnt" },
   { href: "/favorites", label: "Favorites" },
+  { href: "/mindmaps", label: "Mind Maps" },
 ];
 
 export default function Navbar() {

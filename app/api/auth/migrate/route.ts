@@ -14,12 +14,14 @@ export async function POST() {
     const password = "Shivam@123";
     const name = "Shivam";
 
-    // Create user if not exists
+    // Create user if not exists, mark verified
     let user = await User.findOne({ email });
     if (!user) {
       const passwordHash = await bcrypt.hash(password, 10);
-      user = await User.create({ email, passwordHash, name });
+      user = await User.create({ email, passwordHash, name, verified: true });
     }
+    // Always ensure verified
+    await User.updateOne({ email }, { $set: { verified: true } });
     const userId = user._id;
 
     // Fetch all daily news docs

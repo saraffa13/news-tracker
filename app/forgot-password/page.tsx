@@ -1,15 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/components/AuthProvider";
 
-export default function LoginPage() {
-  const { login } = useAuth();
-  const router = useRouter();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,20 +15,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       });
-      const data = await res.json();
-
       if (res.ok) {
-        // Use the auth context login to update state
-        await login(email, password);
-      } else if (data.needsVerification) {
-        router.push(`/verify?email=${encodeURIComponent(data.email)}`);
+        setSent(true);
       } else {
-        setError(data.error || "Login failed");
+        const data = await res.json();
+        setError(data.error || "Failed");
       }
     } catch {
       setError("Network error");
@@ -41,12 +33,34 @@ export default function LoginPage() {
     }
   };
 
+  if (sent) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="w-full max-w-sm text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--accent)] flex items-center justify-center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Check your email</h1>
+          <p className="text-sm text-[var(--text-secondary)] mb-6">
+            If an account exists for <span className="text-[var(--accent)]">{email}</span>,
+            we&apos;ve sent a password reset link.
+          </p>
+          <Link href="/login" className="text-sm text-[var(--accent)] hover:underline">
+            Back to login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center mb-1">Welcome back</h1>
+        <h1 className="text-2xl font-bold text-center mb-1">Forgot password?</h1>
         <p className="text-sm text-[var(--text-secondary)] text-center mb-8">
-          Sign in to NewsDecoder
+          Enter your email and we&apos;ll send a reset link
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -57,16 +71,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border-color)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              autoFocus
               className="w-full px-3 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border-color)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
@@ -78,20 +83,15 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 rounded-lg bg-[var(--accent)] text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Sending..." : "Send Reset Link"}
           </button>
         </form>
 
-        <div className="flex justify-between items-center mt-6">
-          <Link href="/forgot-password" className="text-sm text-[var(--accent)] hover:underline">
-            Forgot password?
+        <p className="text-sm text-[var(--text-secondary)] text-center mt-6">
+          <Link href="/login" className="text-[var(--accent)] hover:underline">
+            Back to login
           </Link>
-          <p className="text-sm text-[var(--text-secondary)]">
-            <Link href="/signup" className="text-[var(--accent)] hover:underline">
-              Sign up
-            </Link>
-          </p>
-        </div>
+        </p>
       </div>
     </div>
   );
