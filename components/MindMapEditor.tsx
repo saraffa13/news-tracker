@@ -54,7 +54,7 @@ export default function MindMapEditor({
     initialNodes.map((n) => ({ ...n, shape: n.shape || "rect" }))
   );
   const [edges, setEdges] = useState<MindMapEdge[]>(initialEdges);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingNode, setEditingNode] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [dragging, setDragging] = useState<string | null>(null);
@@ -73,9 +73,15 @@ export default function MindMapEditor({
     startY: number;
     origNode: MindMapNode;
   } | null>(null);
+  // Box selection
+  const [boxSelect, setBoxSelect] = useState<{ startX: number; startY: number; curX: number; curY: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const editRef = useRef<HTMLInputElement>(null);
   const dirty = useRef(false);
+
+  // Helpers for selection
+  const hasSelection = selected.size > 0;
+  const singleSelected = selected.size === 1 ? [...selected][0] : null;
 
   useEffect(() => {
     if (editingNode && editRef.current) {
@@ -113,20 +119,31 @@ export default function MindMapEditor({
   const handleSvgMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.target === svgRef.current || (e.target as SVGElement).tagName === "svg") {
-        setSelectedNode(null);
+        if (e.shiftKey) {
+          // Start box selection
+          const pt = getSvgPoint(e);
+          setBoxSelect({ startX: pt.x, startY: pt.y, curX: pt.x, curY: pt.y });
+          return;
+        }
+        setSelected(new Set());
         setIsPanning(true);
         setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
       }
     },
-    [pan]
+    [pan, getSvgPoint]
   );
 
   const handleSvgMouseMove = useCallback(
     (e: React.MouseEvent) => {
+      if (boxSelect) {
+        const pt = getSvgPoint(e);
+        setBoxSelect((prev) => prev ? { ...prev, curX: pt.x, curY: pt.y } : null);
+        return;
+      }
       if (resizing) {
         const pt = getSvgPoint(e);
-        const dx = pt.x - (resizing.startX);
-        const dy = pt.y - (resizing.startY);
+        const dx = pt.x - resizing.startX;
+        const dy = pt.y - resizing.startY;
         const o = resizing.origNode;
         const minSize = 40;
 
@@ -143,7 +160,6 @@ export default function MindMapEditor({
           newY = o.y + (o.height - newH);
         }
 
-        // For circles, keep square aspect ratio
         if (o.shape === "circle") {
           const size = Math.max(newW, newH);
           if (resizing.dir.includes("w")) newX = o.x + o.width - size;
@@ -168,39 +184,70 @@ export default function MindMapEditor({
       }
       if (dragging) {
         const pt = getSvgPoint(e);
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.id === dragging
-              ? { ...n, x: pt.x - dragOffset.x, y: pt.y - dragOffset.y }
-              : n
-          )
-        );
+        const dragNode = nodes.find((n) => n.id === dragging);
+        if (!dragNode) return;
+        const dx = pt.x - dragOffset.x - dragNode.x;
+        const dy = pt.y - dragOffset.y - dragNode.y;
+
+        // Move all selected nodes together if dragging one of them
+        if (selected.has(dragging)) {
+          setNodes((prev) =>
+            prev.map((n) =>
+              selected.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n
+            )
+          );
+        } else {
+          setNodes((prev) =>
+            prev.map((n) =>
+              n.id === dragging ? { ...n, x: pt.x - dragOffset.x, y: pt.y - dragOffset.y } : n
+            )
+          );
+        }
         markDirty();
       }
     },
-    [resizing, isPanning, panStart, dragging, dragOffset, getSvgPoint, markDirty]
+    [boxSelect, resizing, isPanning, panStart, dragging, dragOffset, getSvgPoint, markDirty, selected, nodes]
   );
 
-  const handleSvgMouseUp = useCallback(() => {
-    setDragging(null);
-    setIsPanning(false);
-    setResizing(null);
-  }, []);
+  const handleSvgMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (boxSelect) {
+        // Find nodes inside box
+        const x1 = Math.min(boxSelect.startX, boxSelect.curX);
+        const y1 = Math.min(boxSelect.startY, boxSelect.curY);
+        const x2 = Math.max(boxSelect.startX, boxSelect.curX);
+        const y2 = Math.max(boxSelect.startY, boxSelect.curY);
+        const insideNodes = nodes.filter((n) => {
+          const c = getNodeCenter(n);
+          return c.cx >= x1 && c.cx <= x2 && c.cy >= y1 && c.cy <= y2;
+        });
+        if (insideNodes.length > 0) {
+          const isCtrl = e.ctrlKey || e.metaKey;
+          setSelected((prev) => {
+            const next = new Set(isCtrl ? prev : []);
+            insideNodes.forEach((n) => next.add(n.id));
+            return next;
+          });
+        }
+        setBoxSelect(null);
+        return;
+      }
+      setDragging(null);
+      setIsPanning(false);
+      setResizing(null);
+    },
+    [boxSelect, nodes]
+  );
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
       const rect = svgRef.current?.getBoundingClientRect();
       if (!rect) return;
-
-      // Mouse position relative to SVG element
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       const newZoom = Math.min(3, Math.max(0.15, zoom * delta));
-
-      // Adjust pan so the point under the cursor stays fixed
       setPan({
         x: mx - (mx - pan.x) * (newZoom / zoom),
         y: my - (my - pan.y) * (newZoom / zoom),
@@ -231,7 +278,22 @@ export default function MindMapEditor({
         setConnecting(null);
         return;
       }
-      setSelectedNode(nodeId);
+
+      const isCtrl = e.ctrlKey || e.metaKey;
+      if (isCtrl) {
+        // Toggle node in selection
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(nodeId)) next.delete(nodeId);
+          else next.add(nodeId);
+          return next;
+        });
+      } else if (!selected.has(nodeId)) {
+        // Replace selection with this node
+        setSelected(new Set([nodeId]));
+      }
+      // If already in selection and not ctrl, keep selection (for group drag)
+
       const node = nodes.find((n) => n.id === nodeId);
       if (node) {
         const pt = getSvgPoint(e);
@@ -239,7 +301,7 @@ export default function MindMapEditor({
         setDragging(nodeId);
       }
     },
-    [connecting, edges, nodes, getSvgPoint, markDirty]
+    [connecting, edges, nodes, getSvgPoint, markDirty, selected]
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -247,6 +309,7 @@ export default function MindMapEditor({
       e.stopPropagation();
       const node = nodes.find((n) => n.id === nodeId);
       if (node) {
+        setSelected(new Set([nodeId]));
         setEditingNode(nodeId);
         setEditText(node.text);
       }
@@ -266,11 +329,11 @@ export default function MindMapEditor({
 
   const addNode = useCallback(
     (shape: "rect" | "circle") => {
-      const selected = nodes.find((n) => n.id === selectedNode);
+      const anchor = singleSelected ? nodes.find((n) => n.id === singleSelected) : null;
       const size = shape === "circle" ? 100 : 160;
       const h = shape === "circle" ? 100 : 60;
-      const baseX = selected ? selected.x + selected.width + 60 : 400 - pan.x;
-      const baseY = selected ? selected.y + (selected.height - h) / 2 : 300 - pan.y;
+      const baseX = anchor ? anchor.x + anchor.width + 60 : 400 - pan.x;
+      const baseY = anchor ? anchor.y + (anchor.height - h) / 2 : 300 - pan.y;
       const newNode: MindMapNode = {
         id: genId(),
         text: "New Topic",
@@ -282,62 +345,69 @@ export default function MindMapEditor({
         shape,
       };
       setNodes((prev) => [...prev, newNode]);
-      if (selectedNode) {
+      if (singleSelected) {
         setEdges((prev) => [
           ...prev,
-          { id: genId(), from: selectedNode, to: newNode.id },
+          { id: genId(), from: singleSelected, to: newNode.id },
         ]);
       }
-      setSelectedNode(newNode.id);
+      setSelected(new Set([newNode.id]));
       setEditingNode(newNode.id);
       setEditText("New Topic");
       markDirty();
     },
-    [nodes, selectedNode, selectedColor, pan, markDirty]
+    [nodes, singleSelected, selectedColor, pan, markDirty]
   );
 
   const deleteSelected = useCallback(() => {
-    if (!selectedNode) return;
-    setNodes((prev) => prev.filter((n) => n.id !== selectedNode));
+    if (!hasSelection) return;
+    setNodes((prev) => prev.filter((n) => !selected.has(n.id)));
     setEdges((prev) =>
-      prev.filter((e) => e.from !== selectedNode && e.to !== selectedNode)
+      prev.filter((e) => !selected.has(e.from) && !selected.has(e.to))
     );
-    setSelectedNode(null);
+    setSelected(new Set());
     markDirty();
-  }, [selectedNode, markDirty]);
+  }, [selected, hasSelection, markDirty]);
 
-  // Keyboard Delete/Backspace to delete selected node
+  // Keyboard Delete/Backspace
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (editingNode) return; // don't delete while editing text
+      if (editingNode) return;
       if (e.key === "Delete" || e.key === "Backspace") {
         const tag = (e.target as HTMLElement).tagName;
         if (tag === "INPUT" || tag === "TEXTAREA") return;
         deleteSelected();
       }
+      // Ctrl+A to select all
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        e.preventDefault();
+        setSelected(new Set(nodes.map((n) => n.id)));
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [deleteSelected, editingNode]);
+  }, [deleteSelected, editingNode, nodes]);
 
   const changeColor = useCallback(
     (color: string) => {
       setSelectedColor(color);
-      if (selectedNode) {
+      if (hasSelection) {
         setNodes((prev) =>
-          prev.map((n) => (n.id === selectedNode ? { ...n, color } : n))
+          prev.map((n) => (selected.has(n.id) ? { ...n, color } : n))
         );
         markDirty();
       }
     },
-    [selectedNode, markDirty]
+    [selected, hasSelection, markDirty]
   );
 
   const toggleShape = useCallback(() => {
-    if (!selectedNode) return;
+    if (!hasSelection) return;
     setNodes((prev) =>
       prev.map((n) => {
-        if (n.id !== selectedNode) return n;
+        if (!selected.has(n.id)) return n;
         const newShape = n.shape === "rect" ? "circle" : "rect";
         if (newShape === "circle") {
           const size = Math.max(n.width, n.height);
@@ -347,11 +417,11 @@ export default function MindMapEditor({
       })
     );
     markDirty();
-  }, [selectedNode, markDirty]);
+  }, [selected, hasSelection, markDirty]);
 
   const startConnect = useCallback(() => {
-    if (selectedNode) setConnecting(selectedNode);
-  }, [selectedNode]);
+    if (singleSelected) setConnecting(singleSelected);
+  }, [singleSelected]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent, nodeId: string, dir: ResizeDir) => {
@@ -381,7 +451,7 @@ export default function MindMapEditor({
         shape: selectedShape,
       };
       setNodes((prev) => [...prev, newNode]);
-      setSelectedNode(newNode.id);
+      setSelected(new Set([newNode.id]));
       setEditingNode(newNode.id);
       setEditText("New Topic");
       markDirty();
@@ -396,22 +466,21 @@ export default function MindMapEditor({
 
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
-  // Resize handle positions for a node
   const getResizeHandles = (node: MindMapNode): { dir: ResizeDir; x: number; y: number; cursor: string }[] => {
     const { x, y, width: w, height: h } = node;
     return [
-      { dir: "nw", x: x, y: y, cursor: "nwse-resize" },
-      { dir: "n", x: x + w / 2, y: y, cursor: "ns-resize" },
-      { dir: "ne", x: x + w, y: y, cursor: "nesw-resize" },
+      { dir: "nw", x, y, cursor: "nwse-resize" },
+      { dir: "n", x: x + w / 2, y, cursor: "ns-resize" },
+      { dir: "ne", x: x + w, y, cursor: "nesw-resize" },
       { dir: "e", x: x + w, y: y + h / 2, cursor: "ew-resize" },
       { dir: "se", x: x + w, y: y + h, cursor: "nwse-resize" },
       { dir: "s", x: x + w / 2, y: y + h, cursor: "ns-resize" },
-      { dir: "sw", x: x, y: y + h, cursor: "nesw-resize" },
-      { dir: "w", x: x, y: y + h / 2, cursor: "ew-resize" },
+      { dir: "sw", x, y: y + h, cursor: "nesw-resize" },
+      { dir: "w", x, y: y + h / 2, cursor: "ew-resize" },
     ];
   };
 
-  const selectedNodeData = selectedNode ? nodeMap.get(selectedNode) : null;
+  const singleSelectedData = singleSelected ? nodeMap.get(singleSelected) : null;
 
   return (
     <div className="flex flex-col h-full">
@@ -435,19 +504,19 @@ export default function MindMapEditor({
           </svg>
           Circle
         </button>
-        {selectedNode && (
+        {hasSelection && (
           <button
             onClick={toggleShape}
             className="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--bg)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            title="Toggle shape of selected node"
+            title="Toggle shape of selected nodes"
           >
-            {selectedNodeData?.shape === "circle" ? "To Rect" : "To Circle"}
+            Toggle Shape
           </button>
         )}
         <span className="mx-0.5 text-[var(--border-color)]">|</span>
         <button
           onClick={startConnect}
-          disabled={!selectedNode}
+          disabled={!singleSelected}
           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
             connecting
               ? "bg-green-600 text-white"
@@ -466,10 +535,10 @@ export default function MindMapEditor({
         )}
         <button
           onClick={deleteSelected}
-          disabled={!selectedNode}
+          disabled={!hasSelection}
           className="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--bg)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-red-500 disabled:opacity-30"
         >
-          Delete
+          Delete{selected.size > 1 ? ` (${selected.size})` : ""}
         </button>
         <span className="mx-0.5 text-[var(--border-color)]">|</span>
         <div className="flex gap-1">
@@ -485,7 +554,6 @@ export default function MindMapEditor({
           ))}
         </div>
         <span className="mx-0.5 text-[var(--border-color)]">|</span>
-        {/* Default shape for double-click */}
         <div className="flex gap-1 items-center">
           <span className="text-[10px] text-[var(--text-secondary)]">Default:</span>
           <button
@@ -557,23 +625,20 @@ export default function MindMapEditor({
             +
           </button>
         </div>
-        {selectedNodeData && (
-          <span className="text-[10px] text-[var(--text-secondary)] ml-auto">
-            {Math.round(selectedNodeData.width)} x {Math.round(selectedNodeData.height)}
-          </span>
-        )}
-        {!selectedNode && (
-          <span className="text-[10px] text-[var(--text-secondary)] ml-auto">
-            Double-click to add. Double-click node to edit. Drag handles to resize.
-          </span>
-        )}
+        <span className="text-[10px] text-[var(--text-secondary)] ml-auto">
+          {selected.size > 1
+            ? `${selected.size} selected`
+            : singleSelectedData
+              ? `${Math.round(singleSelectedData.width)} x ${Math.round(singleSelectedData.height)}`
+              : "Ctrl+click or Shift+drag to multi-select. Ctrl+A select all."}
+        </span>
       </div>
 
       {/* Canvas */}
       <svg
         ref={svgRef}
         className="flex-1 bg-[var(--bg)]"
-        style={{ minHeight: 500, cursor: isPanning ? "grabbing" : resizing ? "default" : "grab" }}
+        style={{ minHeight: 500, cursor: isPanning ? "grabbing" : resizing ? "default" : boxSelect ? "crosshair" : "grab" }}
         onMouseDown={handleSvgMouseDown}
         onMouseMove={handleSvgMouseMove}
         onMouseUp={handleSvgMouseUp}
@@ -605,7 +670,7 @@ export default function MindMapEditor({
 
           {/* Nodes */}
           {nodes.map((node) => {
-            const isSelected = selectedNode === node.id;
+            const isSelected = selected.has(node.id);
             const isEditing = editingNode === node.id;
             const center = getNodeCenter(node);
 
@@ -616,7 +681,6 @@ export default function MindMapEditor({
                 onDoubleClick={(e) => handleNodeDoubleClick(e, node.id)}
                 style={{ cursor: connecting ? "crosshair" : dragging === node.id ? "grabbing" : "pointer" }}
               >
-                {/* Shape */}
                 {node.shape === "circle" ? (
                   <ellipse
                     cx={center.cx}
@@ -642,7 +706,6 @@ export default function MindMapEditor({
                   />
                 )}
 
-                {/* Text or edit input */}
                 {isEditing ? (
                   <foreignObject
                     x={node.x + 8}
@@ -661,9 +724,7 @@ export default function MindMapEditor({
                         if (e.key === "Escape") setEditingNode(null);
                       }}
                       className="w-full h-full bg-transparent text-white text-center text-sm font-medium outline-none border-b border-white/50"
-                      style={{
-                        lineHeight: `${node.height - 16}px`,
-                      }}
+                      style={{ lineHeight: `${node.height - 16}px` }}
                     />
                   </foreignObject>
                 ) : (
@@ -686,10 +747,10 @@ export default function MindMapEditor({
             );
           })}
 
-          {/* Resize handles for selected node */}
-          {selectedNode && !dragging && !connecting && selectedNodeData && (
+          {/* Resize handles — only for single selection */}
+          {singleSelected && !dragging && !connecting && singleSelectedData && (
             <>
-              {getResizeHandles(selectedNodeData).map((h) => (
+              {getResizeHandles(singleSelectedData).map((h) => (
                 <circle
                   key={h.dir}
                   cx={h.x}
@@ -699,10 +760,25 @@ export default function MindMapEditor({
                   stroke="var(--accent)"
                   strokeWidth={1.5}
                   style={{ cursor: h.cursor }}
-                  onMouseDown={(e) => handleResizeMouseDown(e, selectedNode, h.dir)}
+                  onMouseDown={(e) => handleResizeMouseDown(e, singleSelected, h.dir)}
                 />
               ))}
             </>
+          )}
+
+          {/* Box selection rectangle */}
+          {boxSelect && (
+            <rect
+              x={Math.min(boxSelect.startX, boxSelect.curX)}
+              y={Math.min(boxSelect.startY, boxSelect.curY)}
+              width={Math.abs(boxSelect.curX - boxSelect.startX)}
+              height={Math.abs(boxSelect.curY - boxSelect.startY)}
+              fill="var(--accent)"
+              fillOpacity={0.1}
+              stroke="var(--accent)"
+              strokeWidth={1}
+              strokeDasharray="4 2"
+            />
           )}
 
           {/* Connection line preview */}
@@ -745,7 +821,7 @@ function ConnectingLine({
     };
     window.addEventListener("mousemove", handler);
     return () => window.removeEventListener("mousemove", handler);
-  }, [svgRef, pan]);
+  }, [svgRef, pan, zoom]);
 
   const c = getNodeCenter(fromNode);
 
