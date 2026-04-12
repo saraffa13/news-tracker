@@ -24,12 +24,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
-    if (user.verified === false) {
-      return NextResponse.json(
-        { error: "Email not verified. Please check your inbox.", needsVerification: true, email: user.email },
-        { status: 403 }
-      );
-    }
+    // TODO: Re-enable when email verification is active
+    // if (user.verified === false) {
+    //   return NextResponse.json(
+    //     { error: "Email not verified. Please check your inbox.", needsVerification: true, email: user.email },
+    //     { status: 403 }
+    //   );
+    // }
 
     const token = signToken({ userId: user._id.toString(), email: user.email });
 
