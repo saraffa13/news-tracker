@@ -26,8 +26,8 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (res.ok) {
-        // Redirect to verify page with email
-        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        // Auto-verified — go straight to login
+        router.push(`/login`);
       } else {
         setError(data.error || "Signup failed");
       }

@@ -28,27 +28,29 @@ export async function POST(request: NextRequest) {
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     if (existing && !existing.verified) {
-      // Update existing unverified user
+      // Update existing unverified user — auto-verify for now
       await User.updateOne(
         { _id: existing._id },
-        { $set: { passwordHash, name, verifyOtp: otp, verifyOtpExpiry: otpExpiry } }
+        { $set: { passwordHash, name, verified: true, verifyOtp: otp, verifyOtpExpiry: otpExpiry } }
       );
     } else {
       await User.create({
         email: email.toLowerCase(),
         passwordHash,
         name,
-        verified: false,
+        verified: true, // Auto-verify — re-enable email verification later
         verifyOtp: otp,
         verifyOtpExpiry: otpExpiry,
       });
     }
 
-    await sendMail(email, "NewsDecoder — Verify your email", otpEmailHtml(name, otp));
+    // TODO: Re-enable email verification when SMTP is configured
+    // await sendMail(email, "NewsDecoder — Verify your email", otpEmailHtml(name, otp));
 
     return NextResponse.json({
-      message: "Verification code sent to your email",
+      message: "Account created successfully",
       email: email.toLowerCase(),
+      autoVerified: true,
     });
   } catch (error) {
     console.error("POST /api/auth/signup error:", error);
